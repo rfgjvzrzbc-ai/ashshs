@@ -1,0 +1,45 @@
+name: Build ibaal-sign IPA
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: xcodegen generate
+
+      - name: Build Application Archive
+        run: |
+          xcodebuild -project ibaal-sign.xcodeproj \
+            -scheme ibaal-sign \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/ibaal-sign.xcarchive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+
+      - name: Package Payload into IPA
+        run: |
+          mkdir -p build/Payload
+          cp -r build/ibaal-sign.xcarchive/Products/Applications/ibaal-sign.app build/Payload/
+          cd build
+          zip -r ibaal-sign.ipa Payload
+          cd ..
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ibaal-sign-IPA
+          path: build/ibaal-sign.ipa
